@@ -1,0 +1,24 @@
+{
+  "outputDirectory": ".",
+  "functions": {
+    "api/race.js":     { "maxDuration": 60 },
+    "api/races.js":    { "maxDuration": 20 },
+    "api/plays.js":    { "maxDuration": 60 },
+    "api/parlay.js":   { "maxDuration": 60 },
+    "api/dfs.js":      { "maxDuration": 60 },
+    "api/backtest.js": { "maxDuration": 60 },
+    "api/grades.js":   { "maxDuration": 30 },
+    "api/sync.js":     { "maxDuration": 60 },
+    "api/status.js":   { "maxDuration": 20 },
+    "api/health.js":   { "maxDuration": 30 },
+    "api/live.js":     { "maxDuration": 15 }
+  },
+  "crons": [
+    { "path": "/api/sync?cron=1", "schedule": "0 11 * * 1" },
+    { "path": "/api/race", "schedule": "0 16 * * 0" }
+  ],
+  "rewrites": [
+    { "source": "/", "destination": "/app.html" },
+    { "source": "/app", "destination": "/app.html" }
+  ]
+}
