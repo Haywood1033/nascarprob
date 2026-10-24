@@ -162,3 +162,27 @@ test('salary CSV parse and an exact 6-driver lineup under the cap', () => {
   assert.equal(out.lineups.length, 3);
   for (const l of out.lineups) { assert.equal(l.players.length, 6); assert.ok(l.salary <= 50000); }
 });
+
+test('simulation-scored lineups: dominator cap, ceiling ranking, average equals the sum', () => {
+  const { simSample, projections } = require('../lib/dfs');
+  const n = 30, drivers = toyDrivers(n);
+  const sim = simulateRace({ drivers, type: 'intermediate', laps: 267, params: DEFAULTS, sims: 6000, seed: 21 });
+  const payload = { players: drivers.map(d => ({ id: d.id, name: `D${d.id}`, start: d.start, avgStart: d.start, avgFinish: 0 })) };
+  const sal = drivers.map((d, i) => ({ id: d.id, salary: Math.max(5000, 11800 - i * 230) }));
+  const proj = projections(sim, payload, sal);
+  const smp = simSample(sim, proj.map(p => p.id), 2000);
+  const sample = { n: smp.n, ids: smp.ids, data: new Int16Array(Buffer.from(smp.data, 'base64').buffer.slice(0)) };
+  const pool = proj.map(p => ({ id: p.id, name: p.name, salary: p.salary, points: p.points, ceiling: p.p90 }));
+  const doms = proj.filter(p => p.mostLed >= 0.08).map(p => p.id);
+  assert.ok(doms.length >= 2);
+  assert.ok(Math.abs(proj.reduce((s, p) => s + p.mostLed, 0) - 1) < 1e-9);
+  const cash = Opt.buildSimLineups(pool, sample, { count: 5, metric: 'mean', dominators: doms, maxDominators: 1 });
+  assert.equal(cash.lineups.length, 5);
+  for (const l of cash.lineups) {
+    assert.ok(l.dominators <= 1 && l.salary <= 50000 && l.players.length === 6);
+    assert.ok(Math.abs(l.mean - l.naive) < 2.5, 'averages add (up to sample noise)');
+  }
+  const gpp = Opt.buildSimLineups(pool, sample, { count: 5, metric: 'ceiling' });
+  assert.ok(gpp.lineups[0].ceiling >= cash.lineups[0].ceiling - 1e-9 || gpp.lineups[0].ceiling >= gpp.lineups[1].ceiling);
+  for (let i = 1; i < gpp.lineups.length; i++) assert.ok(gpp.lineups[i - 1].ceiling >= gpp.lineups[i].ceiling);
+});

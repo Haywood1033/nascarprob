@@ -423,7 +423,7 @@ const S = {
   h2hA: null, h2hB: null,
   slip: [], slipRes: null, slipErr: null, legDriver: '', legMarket: 'top10',
   dfs: null, dfsErr: null, dfsLoading: false, salaryCsv: '', salaryName: '',
-  dkCount: 20, dkExposure: 0.5, dkUnique: 2, dkLocks: new Set(), dkExcludes: new Set(), dkSort: { key: 'points', dir: -1 }, dkResult: null, dkBusy: false, dkProgress: null,
+  dkCount: 20, dkExposure: 0.5, dkUnique: 2, dkContest: 'cash', dkMaxDom: 'any', dkLocks: new Set(), dkExcludes: new Set(), dkSort: { key: 'points', dir: -1 }, dkResult: null, dkBusy: false, dkProgress: null,
   backtest: null, btLoading: false, btErr: null, btMarket: 'top10', grades: null,
   live: null,
 };
@@ -879,28 +879,32 @@ function renderDfs() {
       <label class="btn">${hasSal ? 'Replace' : 'Choose file'}<input type="file" id="dkFile" accept=".csv" hidden></label>${hasSal ? '<button class="btn ghost" id="dkClear">Clear</button>' : ''}</div>
     ${!D.startsKnown ? '<div class="callout" style="margin-top:14px">Qualifying hasn’t run, so starting spots are drawn inside each simulation and place-differential points are approximate. Rebuild after qualifying.</div>' : ''}
     ${hasSal ? `<div class="card" style="margin-top:16px"><div class="card-b"><div class="toolbar" style="margin:0">
+      <div class="seg" id="dkContest" role="group" aria-label="Contest type"><button data-v="cash" aria-pressed="${S.dkContest === 'cash'}" data-tip="Rank lineups by average points across the simulated races">Cash · average</button><button data-v="gpp" aria-pressed="${S.dkContest === 'gpp'}" data-tip="Rank lineups by their 90th-percentile race: the upside that wins tournaments">Tournament · ceiling</button></div>
+      <span class="seg-label">Max dominators</span><select class="select" id="dkMaxDom" data-tip="${esc(`Dominators: drivers who lead the most laps in 8%+ of simulated races (${domIds().map(id => playerById(id)?.name).filter(Boolean).join(', ') || 'none'}). They split one pool of laps led and fastest laps.`)}">${['any', 1, 2, 3].map(v => `<option value="${v}" ${String(v) === String(S.dkMaxDom) ? 'selected' : ''}>${v === 'any' ? 'Any' : v}</option>`).join('')}</select>
       <span class="seg-label">Lineups</span><select class="select" id="dkCount">${[1, 5, 10, 20, 50, 150].map(n => `<option ${n === S.dkCount ? 'selected' : ''}>${n}</option>`).join('')}</select>
       <span class="seg-label">Max exposure</span><select class="select" id="dkExposure">${[0.3, 0.5, 0.7, 1].map(v => `<option value="${v}" ${v === S.dkExposure ? 'selected' : ''}>${v === 1 ? 'No cap' : pct(v, 0)}</option>`).join('')}</select>
       <span class="seg-label">Unique per lineup</span><select class="select" id="dkUnique">${[1, 2, 3].map(v => `<option ${v === S.dkUnique ? 'selected' : ''}>${v}</option>`).join('')}</select>
       <span class="spacer"></span>${S.dkLocks.size || S.dkExcludes.size ? `<a href="#" id="dkResetLx" class="note">Reset locks</a>` : ''}
       <button class="btn primary" id="dkBuild" ${S.dkBusy ? 'disabled' : ''}>${ICON.play} ${S.dkBusy ? 'Building…' : 'Build lineups'}</button>${res?.lineups?.length ? '<button class="btn" id="dkExport">Export CSV</button>' : ''}</div>
       ${S.dkProgress ? `<div class="progress"><i style="width:${(S.dkProgress.built / S.dkProgress.count) * 100}%"></i></div>` : ''}</div></div>` : ''}
-    ${res ? `<div class="section-head"><h2>Lineups</h2><span class="count">${res.lineups.length} built in ${(res.ms / 1000).toFixed(1)}s${res.reason ? ` · ${esc(res.reason)}` : ''}</span></div>
+    ${res ? `<div class="section-head"><h2>Lineups</h2><span class="count">${res.lineups.length} lineups · ${res.candidates ? `${res.candidates} candidates scored against ${res.sims.toLocaleString()} simulated races, ranked by ${res.metric === 'ceiling' ? 'ceiling (90th percentile)' : 'average'}` : ''} · ${(res.ms / 1000).toFixed(1)}s${res.reason ? ` · ${esc(res.reason)}` : ''}</span></div>
       <div class="lineups">${res.lineups.slice(0, 24).map((l, i) => `<div class="card"><div class="lu-row head"><span>Lineup ${i + 1}</span><span>Salary</span><span>Pts</span></div>
         ${l.players.map(x => `<div class="lu-row"><span>${esc(x.name)}</span><span>$${x.salary.toLocaleString()}</span><span>${x.points.toFixed(1)}</span></div>`).join('')}
-        <div class="lu-f"><span>$${l.salary.toLocaleString()}</span><span>${l.points.toFixed(1)} pts</span></div></div>`).join('')}</div>` : ''}
+        <div class="lu-f"><span>$${l.salary.toLocaleString()}</span><span>${l.dominators !== undefined ? `${l.dominators} dom · ` : ''}avg ${l.mean !== undefined ? l.mean.toFixed(1) : l.points.toFixed(1)}${l.ceiling !== undefined ? ` · ceiling ${l.ceiling.toFixed(0)}` : ''}</span></div>
+      </div>`).join('')}</div>` : ''}
     <div class="section-head"><h2>Projections</h2><span class="count">Mean points over ${S.data.sims.toLocaleString()} simulated races</span></div>
     <div class="table-wrap"><table class="data"><thead><tr>
-      ${hasSal ? '<th class="l">Lock</th>' : ''}${th('name', 'Driver', 'l')}${th('start', 'Start')}${hasSal ? th('salary', 'Salary') : ''}${th('points', 'Projection')}<th class="l">Where the points come from</th>${th('p90', 'Ceiling')}${hasSal ? th('value', 'Pts / $1k') : ''}
+      ${hasSal ? '<th class="l">Lock</th>' : ''}${th('name', 'Driver', 'l')}${th('start', 'Start')}${hasSal ? th('salary', 'Salary') : ''}${th('points', 'Projection')}<th class="l">Where the points come from</th>${th('domPts', 'Dom pts')}${th('mostLed', 'Leads most')}${th('p90', 'Ceiling')}${hasSal ? th('value', 'Pts / $1k') : ''}
     </tr></thead><tbody>${rows.map(p => `<tr>
       ${hasSal ? `<td class="l"><span class="lk"><button data-lock="${esc(p.id)}" class="${S.dkLocks.has(p.id) ? 'on-lock' : ''}" title="Lock">L</button><button data-ex="${esc(p.id)}" class="${S.dkExcludes.has(p.id) ? 'on-ex' : ''}" title="Exclude">✕</button></span></td>` : ''}
       <td class="l"><div class="pname">${esc(p.name)}</div></td><td>${p.start ? ord(p.start) : `~${Math.round(p.avgStart)}`}</td>${hasSal ? `<td>${p.salary ? `$${p.salary.toLocaleString()}` : '—'}</td>` : ''}
       <td class="sorted">${p.points.toFixed(1)}</td>
       <td class="l"><div class="stackbar" style="width:${Math.max(30, (p.points / maxPts) * 220)}px" data-tip="${esc(`<div class='t'>${p.name}</div><div class='r'>Finish <b>${p.split.finish}</b></div><div class='r'>Place differential <b>${signed(p.split.placeDiff, 1)}</b></div><div class='r'>Laps led <b>${p.split.lapsLed}</b></div><div class='r'>Fastest laps <b>${p.split.fastLaps}</b></div>`)}">
         <i style="width:${(Math.max(0, p.split.finish) / Math.max(1, p.split.finish + Math.max(0, p.split.placeDiff) + p.split.lapsLed + p.split.fastLaps)) * 100}%;background:var(--s1)"></i><i style="width:${(Math.max(0, p.split.placeDiff) / Math.max(1, p.split.finish + Math.max(0, p.split.placeDiff) + p.split.lapsLed + p.split.fastLaps)) * 100}%;background:var(--s3)"></i><i style="width:${(p.split.lapsLed / Math.max(1, p.split.finish + Math.max(0, p.split.placeDiff) + p.split.lapsLed + p.split.fastLaps)) * 100}%;background:var(--s2)"></i><i style="width:${(p.split.fastLaps / Math.max(1, p.split.finish + Math.max(0, p.split.placeDiff) + p.split.lapsLed + p.split.fastLaps)) * 100}%;background:var(--s4)"></i></div></td>
+      <td>${p.domPts.toFixed(1)}</td><td>${pct(p.mostLed, 0)}${p.mostLed >= DOM_MIN ? ' <span class="tag warn">Dom</span>' : ''}</td>
       <td>${p.p90.toFixed(0)}</td>${hasSal ? `<td>${p.value ?? '—'}</td>` : ''}</tr>`).join('')}</tbody></table></div>
     <div class="legend foot"><span><i class="box" style="background:var(--s1)"></i>Finish</span><span><i class="box" style="background:var(--s3)"></i>Place differential</span><span><i class="box" style="background:var(--s2)"></i>Laps led</span><span><i class="box" style="background:var(--s4)"></i>Fastest laps</span></div>
-    <p class="note foot">Scoring: finish 45 / 42 / then 41 down by one, ±1 per place gained or lost from the start, 0.25 per lap led, 0.45 per fastest lap. Check it against your site’s rules page. Ceiling is the 90th percentile run.</p>`;
+    <p class="note foot">Dom pts = laps led + fastest laps points. Leads most = share of simulated races in which the driver leads the most laps. Lineups are scored race by race: averages simply add, but the ceiling reflects how the six drivers’ races line up, so two dominators splitting the same laps don’t get credit for both hitting their best day at once. Scoring: finish 45 / 42 / then 41 down by one, ±1 per place gained or lost from the start, 0.25 per lap led, 0.45 per fastest lap. Check it against your site’s rules page. Ceiling is the 90th percentile run.</p>`;
   const f = $('#dkFile'); if (f) f.addEventListener('change', e => e.target.files[0] && loadSalaryFile(e.target.files[0]));
   const drop = $('#dkDrop');
   ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
@@ -912,20 +916,29 @@ function loadSalaryFile(file) {
   fr.onload = () => { S.salaryCsv = String(fr.result); S.salaryName = file.name; store.set(raceKey('salaries'), JSON.stringify({ csv: S.salaryCsv, name: file.name })); S.dfs = null; S.dkResult = null; loadDfs(); };
   fr.readAsText(file);
 }
+const DOM_MIN = 0.08;
+const domIds = () => (S.dfs?.projections || []).filter(p => p.mostLed >= DOM_MIN).sort((a, b) => b.mostLed - a.mostLed).map(p => p.id);
+function decodeSample(smp) {
+  const bin = atob(smp.data), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { n: smp.n, ids: smp.ids, data: new Int16Array(bytes.buffer) };
+}
 function buildDfs() {
-  const pool = S.dfs.projections.filter(p => p.salary).map(p => ({ id: p.id, name: p.name, salary: p.salary, points: p.points }));
-  const opts = { count: S.dkCount, locks: [...S.dkLocks].filter(id => pool.some(p => p.id === id)), excludes: [...S.dkExcludes], maxExposure: S.dkCount > 1 && S.dkExposure < 1 ? S.dkExposure : 0, minUnique: S.dkCount > 1 ? S.dkUnique : 1, timeLimitMs: 45000 };
+  const pool = S.dfs.projections.filter(p => p.salary).map(p => ({ id: p.id, name: p.name, salary: p.salary, points: p.points, ceiling: p.p90 }));
+  const sample = S.dfs.sample ? decodeSample(S.dfs.sample) : null;
+  const opts = { count: S.dkCount, locks: [...S.dkLocks].filter(id => pool.some(p => p.id === id)), excludes: [...S.dkExcludes], maxExposure: S.dkCount > 1 && S.dkExposure < 1 ? S.dkExposure : 0, minUnique: S.dkCount > 1 ? S.dkUnique : 1, timeLimitMs: 45000,
+    metric: S.dkContest === 'gpp' ? 'ceiling' : 'mean', dominators: domIds(), maxDominators: S.dkMaxDom === 'any' ? undefined : Number(S.dkMaxDom) };
   const t0 = performance.now();
-  S.dkBusy = true; S.dkProgress = { built: 0, count: S.dkCount }; S.dkResult = null; renderDfs();
+  S.dkBusy = true; S.dkProgress = { built: 0, count: 1 }; S.dkResult = null; renderDfs();
   const finish = out => { S.dkBusy = false; S.dkProgress = null; S.dkResult = { ...out, ms: performance.now() - t0 }; renderDfs(); };
   try {
     const worker = new Worker('/lib/dfs-optimizer.js');
     worker.onmessage = e => { if (e.data.type === 'progress') { S.dkProgress = e.data; renderDfs(); } if (e.data.type === 'done') { worker.terminate(); finish(e.data); } };
     worker.onerror = () => { worker.terminate(); runInline(); };
-    worker.postMessage({ pool, opts });
+    worker.postMessage({ pool, opts, sample });
   } catch { runInline(); }
   function runInline() {
-    const go = () => finish(window.DFSOpt.buildLineups(pool, opts));
+    const go = () => finish(sample ? window.DFSOpt.buildSimLineups(pool, sample, opts) : window.DFSOpt.buildLineups(pool, opts));
     if (window.DFSOpt) return setTimeout(go, 30);
     document.head.appendChild(Object.assign(document.createElement('script'), { src: '/lib/dfs-optimizer.js', onload: go, onerror: () => finish({ lineups: [], reason: 'Couldn’t load the optimizer.' }) }));
   }
@@ -1087,6 +1100,7 @@ document.addEventListener('click', e => {
     if (id === 'pMarket') { S.pMarket = v; renderPlays(); }
     if (id === 'pParlay' || id === 'pParlay2') { S.pParlay = v; renderPlays(); renderParlays(); }
     if (id === 'btMarket') { S.btMarket = v; renderAccuracy(); }
+    if (id === 'dkContest') { S.dkContest = v; S.dkResult = null; renderDfs(); }
     return;
   }
   const apply = t.closest('[data-book-apply]'); if (apply) { S.book = $(`#bookText-${apply.dataset.bookApply}`).value; store.set(raceKey('book'), S.book); loadPlays(true); return; }
@@ -1116,6 +1130,7 @@ document.addEventListener('change', e => {
   if (id === 'dkCount') { S.dkCount = Number(e.target.value); renderDfs(); }
   if (id === 'dkExposure') { S.dkExposure = Number(e.target.value); renderDfs(); }
   if (id === 'dkUnique') { S.dkUnique = Number(e.target.value); renderDfs(); }
+  if (id === 'dkMaxDom') { S.dkMaxDom = e.target.value; S.dkResult = null; renderDfs(); }
   if (id === 'legDriver') S.legDriver = e.target.value;
   if (id === 'legMarket') S.legMarket = e.target.value;
 });
