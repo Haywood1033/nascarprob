@@ -15,7 +15,7 @@
   },
   "crons": [
     { "path": "/api/sync?cron=1", "schedule": "0 11 * * 1" },
-    { "path": "/api/race", "schedule": "0 16 * * 0" }
+    { "path": "/api/sync?snapshot=1", "schedule": "0 15 * * *" }
   ],
   "rewrites": [
     { "source": "/", "destination": "/app.html" },

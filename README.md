@@ -9,7 +9,7 @@ one `app.html`.
 ## Deploy
 
 1. Import the repo in Vercel (framework preset: Other). No build step.
-2. Optional but recommended: set `DATABASE_URL` to a Supabase Postgres connection string.
+2. Optional but recommended: set `DATABASE_URL` (or `POSTGRES_URL`, which Vercel's Supabase integration sets) to a Postgres connection string. In Supabase: Project Settings → Database → Connection string → URI, transaction pooler (port 6543).
    Without it the model runs on the last 40 races fetched live.
 3. Backfill history (with a database): open `/api/sync?season=2022`, repeat until
    `remaining` is 0, then 2023, 2024, 2025 and the current season.

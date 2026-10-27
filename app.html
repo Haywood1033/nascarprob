@@ -1027,6 +1027,12 @@ async function runBacktestNow() {
   try { S.backtest = await api('/api/backtest?races=30'); } catch (err) { S.btErr = err.message; }
   S.btLoading = false; renderAccuracy();
 }
+// Whether pre-event projections are being saved, and the latest one — so an empty record says why.
+function storageNote(st) {
+  if (!st) return '';
+  if (!st.connected) return `<p class="note" style="margin:0 0 12px;color:var(--neg)"><b>Not saving projections.</b> ${esc(st.note || '')}</p>`;
+  return `<p class="note" style="margin:0 0 12px">Saving to the database (${esc(st.variable)}): ${st.saved} projection${st.saved === 1 ? '' : 's'} saved, ${st.graded} graded${st.last ? `. Last saved: ${esc(st.last.name)}, ${esc(new Date(st.last.savedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}` : ''}.</p>`;
+}
 async function loadGrades() { try { S.grades = await api('/api/grades'); } catch { S.grades = { races: [], note: 'Grades unavailable.' }; } renderAccuracy(); }
 function renderAccuracy() {
   const el = $('#panel-accuracy');
@@ -1057,6 +1063,7 @@ function renderAccuracy() {
         ${B.races.map(r => `<tr><td class="l">${esc(TRACK_SHORT(r.track))} <span class="muted">${shortDate(r.date)}</span></td><td class="l">${esc(TYPE_LABELS[r.type] || r.type)}</td><td class="l">${esc(r.winner?.name || '—')}</td><td>${r.winner ? pct(r.winner.modelWin) : '—'}</td><td>${r.winner ? ord(r.winner.rank) : '—'}</td><td class="l">${esc(r.favourite.name || '')} <span class="muted">${pct(r.favourite.win, 0)}</span></td><td>${ord(r.favourite.finish)}</td></tr>`).join('')}
       </tbody></table></div>` : ''}
     <div class="section-head"><h2>Live record</h2><span class="note">The last projection before each green flag, graded after the race.</span></div>
+    ${G ? storageNote(G.storage) : ''}
     ${!G ? '<div class="skel" style="height:120px"></div>' : G.races.length ? `
       <div class="table-wrap"><table class="data"><thead><tr><th class="l">Race</th><th class="l">Winner</th><th>Model win %</th><th>Rank</th><th>Top 10 skill</th></tr></thead><tbody>
         ${G.races.map(r => `<tr><td class="l">${esc(r.name)} <span class="muted">${shortDate(r.date)}</span></td><td class="l">${esc(r.winner?.name || '—')}</td><td>${r.winner ? pct(r.winner.modelWin) : '—'}</td><td>${r.winner ? ord(r.winner.modelRank) : '—'}</td><td>${signed(r.markets.top10.skill * 100, 1)}%</td></tr>`).join('')}

@@ -45,6 +45,13 @@ module.exports = async (req, res) => {
   }
   checks.push(await check('Live feed', async () => { const l = await nascar.fetchLive(); return { raceId: l.raceId, lap: l.lap, flag: l.flag, vehicles: l.vehicles.length }; }));
   checks.push(await check('History store', async () => dataStatus()));
+  // Snapshot storage: fails only when a database is configured but doesn't answer; with none
+  // configured it passes and says projections aren't being saved.
+  checks.push(await check('Snapshot storage (accuracy tracking)', async () => {
+    const st = await require('../lib/store').snapshotStatus();
+    if (st.variable && !st.connected) throw new Error(st.note);
+    return st;
+  }));
 
   let audit = null;
   const raceId = param(req, 'race');
