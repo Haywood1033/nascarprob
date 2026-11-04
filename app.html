@@ -604,7 +604,7 @@ function renderWeek() {
   const maxWin = Math.max(...top.slice(0, 12).map(p => p.odds?.win || 0), 0.01);
   el.innerHTML = `
     <div class="tiles">
-      <div class="card tile"><div class="lbl">Favourite</div><div class="val">${fav ? esc(fav.name) : '—'}</div><div class="note">${fav ? `${pct(fav.odds.win)} to win · fair ${american(fav.odds.win)}` : ''}</div></div>
+      <div class="card tile"><div class="lbl">Favorite</div><div class="val">${fav ? esc(fav.name) : '—'}</div><div class="note">${fav ? `${pct(fav.odds.win)} to win · fair ${american(fav.odds.win)}` : ''}</div></div>
       <div class="card tile"><div class="lbl">Track type</div><div class="val sm">${esc(r.track.typeLabel)}</div><div class="note">${esc(r.track.typeNote)}</div></div>
       <div class="card tile"><div class="lbl">Race-day noise</div><div class="val">${d.params.sigma.toFixed(2)}<small>σ</small></div><div class="note">${d.params.dnfRate ? `${pct(d.params.dnfRate, 0)} of cars fail to finish here on average` : ''}</div></div>
       <div class="card tile"><div class="lbl">Weather</div><div class="val sm">${wx?.available ? `${esc(wx.summary.condition)} · ${Math.round(wx.summary.tempAtGreen ?? 0)}°F` : '—'}</div><div class="note">${wx?.available ? `Rain ends it early in ${pct(d.rainShare, 0)} of runs · <a href="#" data-goto="weather">briefing</a>` : esc(wx?.reason || 'No forecast yet')}</div></div>
@@ -1059,8 +1059,8 @@ function renderAccuracy() {
         </tbody></table></div></div>
       </div>
       <div class="section-head"><h2>Race by race</h2></div>
-      <div class="table-wrap"><table class="data"><thead><tr><th class="l">Race</th><th class="l">Type</th><th class="l">Winner</th><th>Model had winner</th><th>Rank</th><th class="l">Favourite</th><th>Fav finished</th></tr></thead><tbody>
-        ${B.races.map(r => `<tr><td class="l">${esc(TRACK_SHORT(r.track))} <span class="muted">${shortDate(r.date)}</span></td><td class="l">${esc(TYPE_LABELS[r.type] || r.type)}</td><td class="l">${esc(r.winner?.name || '—')}</td><td>${r.winner ? pct(r.winner.modelWin) : '—'}</td><td>${r.winner ? ord(r.winner.rank) : '—'}</td><td class="l">${esc(r.favourite.name || '')} <span class="muted">${pct(r.favourite.win, 0)}</span></td><td>${ord(r.favourite.finish)}</td></tr>`).join('')}
+      <div class="table-wrap"><table class="data"><thead><tr><th class="l">Race</th><th class="l">Type</th><th class="l">Winner</th><th>Model had winner</th><th>Rank</th><th class="l">Favorite</th><th>Fav finished</th></tr></thead><tbody>
+        ${B.races.map(r => `<tr><td class="l">${esc(TRACK_SHORT(r.track))} <span class="muted">${shortDate(r.date)}</span></td><td class="l">${esc(TYPE_LABELS[r.type] || r.type)}</td><td class="l">${esc(r.winner?.name || '—')}</td><td>${r.winner ? pct(r.winner.modelWin) : '—'}</td><td>${r.winner ? ord(r.winner.rank) : '—'}</td><td class="l">${esc(r.favorite.name || '')} <span class="muted">${pct(r.favorite.win, 0)}</span></td><td>${ord(r.favorite.finish)}</td></tr>`).join('')}
       </tbody></table></div>` : ''}
     <div class="section-head"><h2>Live record</h2><span class="note">The last projection before each green flag, graded after the race.</span></div>
     ${G ? storageNote(G.storage) : ''}
